@@ -6,6 +6,7 @@ import ChatBox from "../components/ChatBox";
 import Loader from "../components/Loader";
 import { AuthContext } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const [userPrompt, setUserPrompt] = useState("");
@@ -16,7 +17,7 @@ const Home = () => {
   const [isSubmittingChat, setIsSubmittingChat] = useState(false); // Loading state for chat submission
   const { isLoggedIn, loading } = useContext(AuthContext);
   const modalRef = useRef(null); // Ref for the modal
-
+  const navigate = useNavigate();
   // Fetch top 10 countries data
   useEffect(() => {
     if (!loading) {
@@ -82,6 +83,32 @@ const Home = () => {
         return "Visit natural wonders, enjoy outdoor activities, and explore vibrant cities.";
       case "Oceania":
         return "Relax on beautiful beaches, explore coral reefs, and enjoy outdoor adventures.";
+      case "North America":
+        return "Experience diverse landscapes, visit world-class cities, and enjoy outdoor adventures.";
+      case "South America":
+        return "Explore the Amazon rainforest, visit iconic landmarks, and enjoy lively festivals.";
+      case "Central America":
+        return "Discover ancient ruins, enjoy tropical rainforests, and experience rich cultural heritage.";
+      case "Caribbean":
+        return "Relax on stunning beaches, enjoy vibrant festivals, and explore crystal-clear waters.";
+      case "Middle East":
+        return "Explore ancient history, enjoy vibrant bazaars, and experience rich cultural traditions.";
+      case "Southeast Asia":
+        return "Visit stunning islands, enjoy delicious street food, and explore lush jungles.";
+      case "Central Asia":
+        return "Discover Silk Road history, experience nomadic cultures, and explore stunning landscapes.";
+      case "Eastern Europe":
+        return "Explore medieval castles, enjoy hearty cuisine, and experience rich cultural traditions.";
+      case "Western Europe":
+        return "Visit iconic landmarks, enjoy gourmet food, and explore charming cities.";
+      case "Northern Europe":
+        return "Experience the Northern Lights, explore fjords, and enjoy cozy Scandinavian culture.";
+      case "Southern Europe":
+        return "Relax on Mediterranean beaches, enjoy delicious cuisine, and explore ancient ruins.";
+      case "Antarctica":
+        return "Experience the pristine wilderness, observe unique wildlife, and marvel at icy landscapes.";
+      case "Polar":
+        return "Witness the breathtaking auroras, explore icy terrains, and enjoy extreme adventures.";
       default:
         return "Explore local culture, try traditional cuisine, and visit historical landmarks.";
     }
@@ -115,6 +142,14 @@ const Home = () => {
   // Handle form submission for chat
   const handleSubmit = async (e) => {
     e.preventDefault();
+  
+    // Redirect to /login if the user is not logged in
+    if (!isLoggedIn) {
+      navigate("/login"); // Use the navigate function from react-router-dom
+      toast.error("Please log in to use the chat feature.");
+      return;
+    }
+  
     setIsSubmittingChat(true); // Start loading
     try {
       const response = await axios.post(
@@ -124,7 +159,7 @@ const Home = () => {
       );
       setAiResponse(response.data.response);
     } catch (error) {
-      toast.error(error.message);
+      toast.error('Maximum 1 Prompt can be sent in a Day.');
     } finally {
       setIsSubmittingChat(false); // Stop loading
     }
