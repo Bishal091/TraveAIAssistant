@@ -1,0 +1,274 @@
+import { useContext, useState, useEffect, useRef } from "react";
+import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes } from "react-icons/fa";
+import axios from "axios";
+import toast from "react-hot-toast";
+import ChatBox from "../components/ChatBox";
+import Loader from "../components/Loader";
+import { AuthContext } from "../context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
+
+const Home = () => {
+  const [userPrompt, setUserPrompt] = useState("");
+  const [aiResponse, setAiResponse] = useState("");
+  const [countries, setCountries] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState(null); // For modal
+  const [isFetchingCountries, setIsFetchingCountries] = useState(false); // Loading state for fetching countries
+  const [isSubmittingChat, setIsSubmittingChat] = useState(false); // Loading state for chat submission
+  const { isLoggedIn, loading } = useContext(AuthContext);
+  const modalRef = useRef(null); // Ref for the modal
+
+  // Fetch top 10 countries data
+  useEffect(() => {
+    if (!loading) {
+      fetchCountries();
+    }
+  }, [loading]);
+
+  // Close modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        closeModal();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Fetch weather data
+  const fetchWeather = async (capital) => {
+    try {
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?q=${capital}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}&units=metric`
+      );
+      return {
+        temperature: response.data.main.temp,
+        description: response.data.weather[0].description,
+        icon: response.data.weather[0].icon,
+      };
+    } catch (error) {
+      return {
+        temperature: "N/A",
+        description: "Weather data unavailable",
+        icon: "01d",
+      };
+    }
+  };
+
+  // Determine the best time to visit based on weather data
+  const getBestTimeToVisit = (weather) => {
+    const temperature = weather.temperature;
+    if (temperature >= 15 && temperature <= 25) {
+      return "Spring (March to May) or Autumn (September to November)";
+    } else if (temperature > 25) {
+      return "Winter (December to February)";
+    } else {
+      return "Summer (June to August)";
+    }
+  };
+
+  // Generate dynamic travel tips based on the country's region
+  const getTravelTips = (region) => {
+    switch (region) {
+      case "Europe":
+        return "Explore historical landmarks, enjoy local cuisine, and visit museums.";
+      case "Asia":
+        return "Visit ancient temples, try street food, and explore bustling markets.";
+      case "Africa":
+        return "Go on a safari, explore national parks, and experience local cultures.";
+      case "Americas":
+        return "Visit natural wonders, enjoy outdoor activities, and explore vibrant cities.";
+      case "Oceania":
+        return "Relax on beautiful beaches, explore coral reefs, and enjoy outdoor adventures.";
+      default:
+        return "Explore local culture, try traditional cuisine, and visit historical landmarks.";
+    }
+  };
+
+  // Fetch countries and their details
+  const fetchCountries = async () => {
+    setIsFetchingCountries(true); // Start loading
+    try {
+      const response = await axios.get("https://restcountries.com/v3.1/all");
+      const topCountries = response.data
+        .sort(() => Math.random() - 0.5) // Shuffle the array randomly
+        .slice(0, 10); // Select the first 10 countries after shuffling
+
+      const countriesWithDetails = await Promise.all(
+        topCountries.map(async (country) => {
+          const weather = await fetchWeather(country.capital[0]);
+          const bestTimeToVisit = getBestTimeToVisit(weather);
+          const travelTips = getTravelTips(country.region);
+          return { ...country, weather, bestTimeToVisit, travelTips };
+        })
+      );
+      setCountries(countriesWithDetails);
+    } catch (error) {
+      // toast.error("Failed to fetch countries");
+    } finally {
+      setIsFetchingCountries(false); // Stop loading
+    }
+  };
+
+  // Handle form submission for chat
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmittingChat(true); // Start loading
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/ai/chat",
+        { userPrompt },
+        { withCredentials: true }
+      );
+      setAiResponse(response.data.response);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmittingChat(false); // Stop loading
+    }
+  };
+
+  // Handle "Learn More" button click
+  const handleLearnMore = (country) => {
+    setSelectedCountry(country);
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setSelectedCountry(null);
+  };
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans">
+      {/* ChatBox Section */}
+      <ChatBox
+        userPrompt={userPrompt}
+        setUserPrompt={setUserPrompt}
+        aiResponse={aiResponse}
+        handleSubmit={handleSubmit}
+        isSubmitting={isSubmittingChat} // Pass loading state to ChatBox
+      />
+
+      {/* Top 10 Countries Section */}
+      <div className="container mx-auto px-4 py-12">
+        <h2 className="text-3xl font-bold text-center mb-8">Countries You can Visit</h2>
+        {isFetchingCountries ? (
+          <Loader /> // Show loader while fetching countries
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {countries.map((country, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.1, delay: index * 0.001 }}
+                whileHover={{ scale: 1.03, transition: { duration: 0.1 } }}
+                className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col"
+              >
+                <div className="p-6 flex-1">
+                  <div className="flex items-center mb-4">
+                    <FaFlag className="text-xl text-blue-500 mr-2" />
+                    <h3 className="text-xl font-semibold">{country.name.common}</h3>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    <FaMapMarkerAlt className="inline-block mr-2" />
+                    <strong>Capital:</strong> {country.capital[0]}
+                  </p>
+                  <p className="text-gray-600 mb-4">
+                    <FaCloudSun className="inline-block mr-2" />
+                    <strong>Weather:</strong> {country.weather.description} ({country.weather.temperature}°C)
+                  </p>
+                  <p className="text-gray-600 mb-4">
+                    <FaCalendarAlt className="inline-block mr-2" />
+                    <strong>Best Time to Visit:</strong> {country.bestTimeToVisit}
+                  </p>
+                  <p className="text-gray-600 mb-4">
+                    <FaInfoCircle className="inline-block mr-2" />
+                    <strong>Travel Tips:</strong> {country.travelTips}
+                  </p>
+                </div>
+                <button
+                  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors mt-auto mb-3"
+                  onClick={() => handleLearnMore(country)}
+                >
+                  Learn More
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal for Learn More */}
+      <AnimatePresence>
+        {selectedCountry && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              className="bg-white rounded-lg shadow-lg w-11/12 md:w-3/4 lg:w-1/2 xl:w-1/3 p-6 relative"
+            >
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 bg-red-400 hover:bg-red-600 p-2 rounded-full transition-colors"
+              >
+                <FaTimes className="text-white" />
+              </button>
+              <div className="flex items-center mb-4">
+                <img
+                  src={selectedCountry.flags.png}
+                  alt={`${selectedCountry.name.common} Flag`}
+                  className="w-8 h-6 mr-2"
+                />
+                <h2 className="text-2xl font-bold mr-3">{selectedCountry.name.common}</h2>
+              </div>
+              <p className="text-gray-600 mb-4">
+                <strong>Capital:</strong> {selectedCountry.capital[0]}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Region:</strong> {selectedCountry.region}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Population:</strong> {selectedCountry.population.toLocaleString()}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Languages:</strong>{" "}
+                {Object.values(selectedCountry.languages || {}).join(", ")}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Currency:</strong>{" "}
+                {Object.values(selectedCountry.currencies || {})
+                  .map((currency) => currency.name)
+                  .join(", ")}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Weather:</strong> {selectedCountry.weather.description} ({selectedCountry.weather.temperature}°C)
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Best Time to Visit:</strong> {selectedCountry.bestTimeToVisit}
+              </p>
+              <p className="text-gray-600 mb-4">
+                <strong>Travel Tips:</strong> {selectedCountry.travelTips}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Home;
