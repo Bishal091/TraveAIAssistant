@@ -47,7 +47,7 @@ const OtpVerification = () => {
   
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/verify-otp",
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/verify-otp`,
         { email, otp: otpString }, // Send otpString instead of the otp array
         { withCredentials: true } // Include credentials
       );
@@ -61,7 +61,7 @@ const OtpVerification = () => {
   // Handle resend OTP
   const handleResendOtp = async () => {
     try {
-      await axios.post("http://localhost:5000/api/auth/resend-otp", { 
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/resend-otp`, { 
         email, 
         password 
       }, { withCredentials: true });

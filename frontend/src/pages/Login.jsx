@@ -18,7 +18,7 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -35,7 +35,7 @@ const Login = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/google-signin",
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signin`,
         { idToken: credentialResponse.credential },
         { withCredentials: true }
       );

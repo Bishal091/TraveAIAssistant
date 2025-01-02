@@ -27,7 +27,7 @@ const Signup = () => {
 
     try {
       // Check if user already exists
-      const response = await axios.post("http://localhost:5000/api/auth/signup", { email, password });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password });
       toast.success(response.data.message);
 
       // Navigate to OTP verification page
@@ -41,7 +41,7 @@ const Signup = () => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/google-signin", {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signin`, {
         idToken: credentialResponse.credential,
       });
       const { token } = response.data;

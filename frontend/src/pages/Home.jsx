@@ -153,7 +153,7 @@ const Home = () => {
     setIsSubmittingChat(true); // Start loading
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/ai/chat",
+        `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
         { userPrompt },
         { withCredentials: true }
       );

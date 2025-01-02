@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
       const checkAuth = async () => {
         try {
-          const response = await axios.get("http://localhost:5000/api/auth/check", { withCredentials: true });
+          const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/auth/check`, { withCredentials: true });
         //   console.log("Authentication check successful:", response.data);
           setIsLoggedIn(true);
         } catch (error) {
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post("http://localhost:5000/api/auth/logout", {}, { withCredentials: true });
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
       setIsLoggedIn(false);
       navigate("/login");
     } catch (error) {
