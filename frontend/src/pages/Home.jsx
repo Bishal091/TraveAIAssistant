@@ -8,24 +8,56 @@ import { AuthContext } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
+// API client configuration
+const createApiClient = (baseURL) => {
+  const client = axios.create({
+    baseURL,
+    timeout: 10000,
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1'
+    }
+  });
+
+  client.interceptors.response.use(
+    response => response,
+    async error => {
+      const { config } = error;
+      if (!config || !config.retry) {
+        return Promise.reject(error);
+      }
+
+      config.retry--;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return client(config);
+    }
+  );
+
+  return client;
+};
+
+const countriesApi = createApiClient('https://restcountries.com/v3.1');
+const weatherApi = createApiClient('https://api.openweathermap.org/data/2.5');
+
 const Home = () => {
   const [userPrompt, setUserPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [countries, setCountries] = useState([]);
-  const [selectedCountry, setSelectedCountry] = useState(null); // For modal
-  const [isFetchingCountries, setIsFetchingCountries] = useState(false); // Loading state for fetching countries
-  const [isSubmittingChat, setIsSubmittingChat] = useState(false); // Loading state for chat submission
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [isFetchingCountries, setIsFetchingCountries] = useState(false);
+  const [isSubmittingChat, setIsSubmittingChat] = useState(false);
   const { isLoggedIn, loading } = useContext(AuthContext);
-  const modalRef = useRef(null); // Ref for the modal
+  const modalRef = useRef(null);
   const navigate = useNavigate();
-  // Fetch top 10 countries data
+
   useEffect(() => {
     if (!loading) {
       fetchCountries();
     }
   }, [loading]);
 
-  // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -33,23 +65,26 @@ const Home = () => {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch weather data
   const fetchWeather = async (capital) => {
     try {
-      const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${capital}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}&units=metric`
-      );
+      const response = await weatherApi.get('/weather', {
+        params: {
+          q: capital,
+          appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
+          units: 'metric'
+        },
+        retry: 3
+      });
       return {
         temperature: response.data.main.temp,
         description: response.data.weather[0].description,
         icon: response.data.weather[0].icon,
       };
     } catch (error) {
+      console.error('Weather fetch error:', error);
       return {
         temperature: "N/A",
         description: "Weather data unavailable",
@@ -58,19 +93,16 @@ const Home = () => {
     }
   };
 
-  // Determine the best time to visit based on weather data
   const getBestTimeToVisit = (weather) => {
     const temperature = weather.temperature;
     if (temperature >= 15 && temperature <= 25) {
       return "Spring (March to May) or Autumn (September to November)";
     } else if (temperature > 25) {
       return "Winter (December to February)";
-    } else {
-      return "Summer (June to August)";
     }
+    return "Summer (June to August)";
   };
 
-  // Generate dynamic travel tips based on the country's region
   const getTravelTips = (region) => {
     switch (region) {
       case "Europe":
@@ -114,18 +146,21 @@ const Home = () => {
     }
   };
 
-  // Fetch countries and their details
   const fetchCountries = async () => {
-    setIsFetchingCountries(true); // Start loading
+    setIsFetchingCountries(true);
     try {
-      const response = await axios.get("https://restcountries.com/v3.1/all");
+      const response = await countriesApi.get("/all", {
+        retry: 3,
+        timeout: 15000
+      });
+      
       const topCountries = response.data
-        .sort(() => Math.random() - 0.5) // Shuffle the array randomly
-        .slice(0, 10); // Select the first 10 countries after shuffling
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 10);
 
       const countriesWithDetails = await Promise.all(
         topCountries.map(async (country) => {
-          const weather = await fetchWeather(country.capital[0]);
+          const weather = await fetchWeather(country.capital?.[0] || '');
           const bestTimeToVisit = getBestTimeToVisit(weather);
           const travelTips = getTravelTips(country.region);
           return { ...country, weather, bestTimeToVisit, travelTips };
@@ -133,52 +168,46 @@ const Home = () => {
       );
       setCountries(countriesWithDetails);
     } catch (error) {
-      // toast.error("Failed to fetch countries");
+      console.error('Countries fetch error:', error);
+      toast.error("Failed to load countries. Please refresh the page.");
     } finally {
-      setIsFetchingCountries(false); // Stop loading
+      setIsFetchingCountries(false);
     }
   };
 
-  // Handle form submission for chat
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
-    // Redirect to /login if the user is not logged in
+    
     if (!isLoggedIn) {
-      navigate("/login"); // Use the navigate function from react-router-dom
+      navigate("/login");
       toast.error("Please log in to use the chat feature.");
       return;
     }
   
-    setIsSubmittingChat(true); // Start loading
+    setIsSubmittingChat(true);
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
         { userPrompt },
-        { withCredentials: true }
+        { 
+          withCredentials: true,
+          timeout: 15000,
+          retry: 2
+        }
       );
       setAiResponse(response.data.response);
     } catch (error) {
       toast.error('Maximum 1 Prompt can be sent in a Day.');
     } finally {
-      setIsSubmittingChat(false); // Stop loading
+      setIsSubmittingChat(false);
     }
   };
 
-  // Handle "Learn More" button click
-  const handleLearnMore = (country) => {
-    setSelectedCountry(country);
-  };
+  const handleLearnMore = (country) => setSelectedCountry(country);
+  const closeModal = () => setSelectedCountry(null);
 
-  // Close modal
-  const closeModal = () => {
-    setSelectedCountry(null);
-  };
-
-  if (loading) {
-    return <Loader />;
-  }
-
+  if (loading) return <Loader />;
+  
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* ChatBox Section */}
