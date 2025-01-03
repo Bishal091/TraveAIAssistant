@@ -8,39 +8,6 @@ import { AuthContext } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-// API client configuration
-const createApiClient = (baseURL) => {
-  const client = axios.create({
-    baseURL,
-    timeout: 10000,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1'
-    }
-  });
-
-  client.interceptors.response.use(
-    response => response,
-    async error => {
-      const { config } = error;
-      if (!config || !config.retry) {
-        return Promise.reject(error);
-      }
-
-      config.retry--;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return client(config);
-    }
-  );
-
-  return client;
-};
-
-const countriesApi = createApiClient('https://restcountries.com/v3.1');
-const weatherApi = createApiClient('https://api.openweathermap.org/data/2.5');
-
 const Home = () => {
   const [userPrompt, setUserPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
@@ -70,13 +37,14 @@ const Home = () => {
 
   const fetchWeather = async (capital) => {
     try {
-      const response = await weatherApi.get('/weather', {
+      const response = await axios({
+        method: 'get',
+        url: 'https://api.openweathermap.org/data/2.5/weather',
         params: {
           q: capital,
           appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
           units: 'metric'
-        },
-        retry: 3
+        }
       });
       return {
         temperature: response.data.main.temp,
@@ -84,12 +52,51 @@ const Home = () => {
         icon: response.data.weather[0].icon,
       };
     } catch (error) {
-      console.error('Weather fetch error:', error);
       return {
         temperature: "N/A",
         description: "Weather data unavailable",
         icon: "01d",
       };
+    }
+  };
+
+  const fetchCountries = async () => {
+    setIsFetchingCountries(true);
+    try {
+      const response = await axios({
+        method: 'get',
+        url: 'https://restcountries.com/v3.1/all',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.data) throw new Error('No data received');
+      
+      const topCountries = response.data
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 10);
+
+      const countriesWithDetails = await Promise.all(
+        topCountries.map(async (country) => {
+          if (!country.capital?.[0]) return null;
+          const weather = await fetchWeather(country.capital[0]);
+          return {
+            ...country,
+            weather,
+            bestTimeToVisit: getBestTimeToVisit(weather),
+            travelTips: getTravelTips(country.region)
+          };
+        })
+      );
+
+      const validCountries = countriesWithDetails.filter(country => country !== null);
+      setCountries(validCountries);
+    } catch (error) {
+      console.error('Countries fetch error:', error);
+      toast.error("Failed to load countries. Please refresh the page.");
+    } finally {
+      setIsFetchingCountries(false);
     }
   };
 
@@ -146,34 +153,6 @@ const Home = () => {
     }
   };
 
-  const fetchCountries = async () => {
-    setIsFetchingCountries(true);
-    try {
-      const response = await countriesApi.get("/all", {
-        retry: 3,
-        timeout: 15000
-      });
-      
-      const topCountries = response.data
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 10);
-
-      const countriesWithDetails = await Promise.all(
-        topCountries.map(async (country) => {
-          const weather = await fetchWeather(country.capital?.[0] || '');
-          const bestTimeToVisit = getBestTimeToVisit(weather);
-          const travelTips = getTravelTips(country.region);
-          return { ...country, weather, bestTimeToVisit, travelTips };
-        })
-      );
-      setCountries(countriesWithDetails);
-    } catch (error) {
-      console.error('Countries fetch error:', error);
-      toast.error("Failed to load countries. Please refresh the page.");
-    } finally {
-      setIsFetchingCountries(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -207,7 +186,7 @@ const Home = () => {
   const closeModal = () => setSelectedCountry(null);
 
   if (loading) return <Loader />;
-  
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* ChatBox Section */}
