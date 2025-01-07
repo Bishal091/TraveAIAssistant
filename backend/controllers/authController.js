@@ -8,11 +8,10 @@ const TempUser = require("../models/TempUser");
 
 const setTokenCookie = (res, token) => {
   res.cookie("token", token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    maxAge: 3600000,
-    domain: process.env.NODE_ENV === 'production' ? 'onrender.com' : 'localhost'
+    httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
+    secure: process.env.NODE_ENV === "production", // Ensures the cookie is only sent over HTTPS in production
+    sameSite: "strict", // Prevents the cookie from being sent in cross-site requests
+    maxAge: 3600000, // 1 hour in milliseconds
   });
 };
 
