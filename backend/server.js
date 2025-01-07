@@ -9,16 +9,16 @@ const aiRoutes = require("./routes/aiRoutes");
 
 
 const app = express();
+app.use(cookieParser()); // Use cookie-parser middleware
 const port = process.env.PORT || 5000;
 
-const corsOptions = {
-  origin: "https://traveai.onrender.com", // Replace with your frontend URL
-  credentials: true, // Allow credentials (cookies)
-};
-
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: 'https://traveai.onrender.com',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
-app.use(cookieParser()); // Use cookie-parser middleware
 
 
 // Connect to MongoDB
