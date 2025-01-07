@@ -26,7 +26,7 @@ exports.chat = async (req, res) => {
       temperature: 0.7,
       max_tokens: 256,
     });
-console.log(response);
+
 
     const response = completion.choices[0].message.content;
     res.status(200).json({ response });
