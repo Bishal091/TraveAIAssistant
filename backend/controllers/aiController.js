@@ -1,8 +1,8 @@
 const { OpenAI } = require("openai");
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,
+  apiKey: `${process.env.OPENAI_API_KEY}`, // wrapped in string
+  baseURL: `${process.env.OPENAI_BASE_URL}` // wrapped in string
 });
 
 exports.chat = async (req, res) => {
@@ -13,8 +13,6 @@ exports.chat = async (req, res) => {
   }
 
   try {
-    console.log("Sending request to OpenAI with prompt:", userPrompt);
-    
     const completion = await openai.chat.completions.create({
       model: "mistralai/Mistral-7B-Instruct-v0.2",
       messages: [
@@ -31,37 +29,11 @@ exports.chat = async (req, res) => {
       max_tokens: 256,
     });
 
-    if (!completion.choices || !completion.choices[0]) {
-      console.error("Invalid response from OpenAI:", completion);
-      return res.status(500).json({ message: "Invalid response from AI service" });
-    }
-
     const response = completion.choices[0].message.content;
-    console.log("Successful response:", response);
-    
     return res.status(200).json({ response });
-  } catch (error) {
-    console.error("OpenAI API error:", {
-      message: error.message,
-      code: error.code,
-      status: error.status,
-      response: error.response?.data,
-      stack: error.stack
-    });
-
-    // Specific error handling
-    if (error.response?.status === 401) {
-      return res.status(500).json({ message: "Authentication error with AI service" });
-    }
     
-    if (error.response?.status === 400) {
-      return res.status(400).json({ message: "Invalid request to AI service" });
-    }
-
-    return res.status(500).json({ 
-      message: "Something went wrong", 
-      error: error.message,
-      details: error.response?.data 
-    });
+  } catch (error) {
+    console.error("Error details:", error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
