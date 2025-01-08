@@ -14,6 +14,10 @@ exports.chat = async (req, res) => {
       baseURL: process.env.OPENAI_BASE_URL
     });
 
+    console.log(apiKey);
+    console.log(baseURL);
+    
+
     const completion = await openai.chat.completions.create({
       model: "mistralai/Mistral-7B-Instruct-v0.2",
       messages: [
