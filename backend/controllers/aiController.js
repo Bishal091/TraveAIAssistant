@@ -14,8 +14,7 @@ exports.chat = async (req, res) => {
       baseURL: process.env.OPENAI_BASE_URL
     });
 
-    console.log(apiKey);
-    console.log(baseURL);
+    console.log(openai);
     
 
     const completion = await openai.chat.completions.create({
