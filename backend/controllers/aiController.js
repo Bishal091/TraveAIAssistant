@@ -1,10 +1,5 @@
 const { OpenAI } = require("openai");
 
-const openai = new OpenAI({
-  apiKey: `${process.env.OPENAI_API_KEY}`, // wrapped in string
-  baseURL: `${process.env.OPENAI_BASE_URL}` // wrapped in string
-});
-
 exports.chat = async (req, res) => {
   const { userPrompt } = req.body;
   
@@ -12,7 +7,13 @@ exports.chat = async (req, res) => {
     return res.status(400).json({ message: "User prompt is required" });
   }
 
+  // Create OpenAI instance with proper error handling
   try {
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL
+    });
+
     const completion = await openai.chat.completions.create({
       model: "mistralai/Mistral-7B-Instruct-v0.2",
       messages: [
@@ -33,7 +34,21 @@ exports.chat = async (req, res) => {
     return res.status(200).json({ response });
     
   } catch (error) {
-    console.error("Error details:", error);
-    return res.status(500).json({ message: "Something went wrong" });
+    // Enhanced error logging
+    console.error("Error details:", {
+      message: error.message,
+      status: error.status,
+      response: error.response?.data,
+      stack: error.stack
+    });
+    
+    // Send more specific error messages
+    if (error.status === 400) {
+      return res.status(400).json({ message: "Invalid request parameters" });
+    }
+    if (error.status === 401) {
+      return res.status(401).json({ message: "Authentication error - check API key" });
+    }
+    return res.status(500).json({ message: "Something went wrong", error: error.message });
   }
 };

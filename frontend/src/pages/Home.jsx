@@ -165,15 +165,18 @@ const Home = () => {
   
     setIsSubmittingChat(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
-        { userPrompt },
-        { 
-          withCredentials: true,
-          timeout: 15000,
-          retry: 2
-        }
-      );
+    const response = await axios.post(
+  `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
+  { userPrompt },
+  { 
+    withCredentials: true,
+    timeout: 15000,
+    retry: 2,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+);
       setAiResponse(response.data.response);
     } catch (error) {
       toast.error('Maximum 1 Prompt can be sent in a Day.');
