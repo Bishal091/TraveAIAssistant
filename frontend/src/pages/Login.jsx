@@ -158,6 +158,7 @@ const Login = () => {
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
                 useOneTap
+                className="text-center w-full mx-auto"
               />
             </GoogleOAuthProvider>
           </motion.div>

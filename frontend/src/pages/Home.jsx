@@ -20,7 +20,7 @@ const Home = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-      fetchCountries();
+    fetchCountries();
   }, []);
 
   useEffect(() => {
@@ -151,7 +151,6 @@ const Home = () => {
     }
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
       
@@ -200,19 +199,21 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* ChatBox Section */}
-      <ChatBox
-        userPrompt={userPrompt}
-        setUserPrompt={setUserPrompt}
-        aiResponse={aiResponse}
-        handleSubmit={handleSubmit}
-        isSubmitting={isSubmittingChat} // Pass loading state to ChatBox
-      />
+ 
+        <ChatBox
+          userPrompt={userPrompt}
+          setUserPrompt={setUserPrompt}
+          aiResponse={aiResponse}
+          handleSubmit={handleSubmit}
+          isSubmitting={isSubmittingChat}
+        />
+
 
       {/* Top 10 Countries Section */}
       <div className="container mx-auto px-4 py-12">
         <h2 className="text-3xl font-bold text-center mb-8">Countries You can Visit</h2>
         {isFetchingCountries ? (
-          <Loader /> // Show loader while fetching countries
+          <Loader />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {countries.map((country, index) => (
