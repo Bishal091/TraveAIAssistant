@@ -11,9 +11,6 @@ exports.chat = async (req, res) => {
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: process.env.OPENAI_BASE_URL,
-      defaultHeaders: {
-        'Content-Type': 'application/json'
-      }
     });
 
     // Validate environment variables
@@ -21,13 +18,14 @@ exports.chat = async (req, res) => {
       throw new Error('Missing required environment variables');
     }
 
+    const systemPrompt = `You are a travel agent. Provide responses in HTML format with Tailwind CSS classes. Focus on creating visually appealing, structured content with proper spacing, colors, and responsive design. Include relevant travel information, tips, and recommendations.`;
+
     const completion = await openai.chat.completions.create({
-      // Use the correct model identifier format
-      model: "mistral-7b-instruct-v0.2",  // Changed from mistralai/Mistral-7B-Instruct-v0.2
+      model: "mistralai/Mistral-7B-Instruct-v0.2",
       messages: [
         {
           role: "system",
-          content: "You are a travel agent. Be short,and give all the final response in html tags with applying tailwindcss.",
+          content: systemPrompt,
         },
         {
           role: "user",
@@ -49,9 +47,7 @@ exports.chat = async (req, res) => {
     console.error("Error details:", {
       message: error.message,
       status: error.status,
-      response: error.response?.data,
       stack: error.stack,
-      // Add request details for debugging
       requestData: {
         apiKey: process.env.OPENAI_API_KEY ? 'Present' : 'Missing',
         baseURL: process.env.OPENAI_BASE_URL,
@@ -59,23 +55,23 @@ exports.chat = async (req, res) => {
       }
     });
     
+    // Improved error handling with specific messages
     if (error.message.includes('Missing required environment')) {
       return res.status(500).json({ message: "Server configuration error" });
     }
     if (error.status === 400) {
       return res.status(400).json({ 
-        message: "Invalid request parameters",
+        message: "Invalid request to AI service. Please try again with a different prompt.",
         details: error.message 
       });
     }
     if (error.status === 401) {
-      return res.status(401).json({ message: "Authentication error - check API key" });
+      return res.status(401).json({ message: "Authentication error with AI service" });
     }
     
     return res.status(500).json({ 
-      message: "Something went wrong", 
-      error: error.message,
-      details: error.response?.data 
+      message: "Failed to process your request. Please try again.", 
+      error: error.message
     });
   }
 };
