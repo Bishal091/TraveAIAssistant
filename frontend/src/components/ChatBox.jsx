@@ -7,7 +7,7 @@ const ChatBox = ({ userPrompt, setUserPrompt, aiResponse, handleSubmit, isSubmit
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="bg-white p-6 rounded-lg shadow-md max-w-4xl mx-auto mt-8"
+      className="bg-white p-6 rounded-lg shadow-md max-w-4xl mx-auto "
     >
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
