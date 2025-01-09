@@ -27,7 +27,7 @@ exports.chat = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a travel agent. Be short and helpful.And also Give your response in proper formatted way,in proper points Bold texts and whatever required. And finally give your complete response in html tags with proper tailwind css applied to it for formatting.",
+          content: "You are a travel agent. Be short,and give all the final response in html tags with applying tailwindcss.",
         },
         {
           role: "user",
