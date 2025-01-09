@@ -7,41 +7,101 @@ import { AuthContext } from "../context/AuthContext";
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLoggedIn, logout } = useContext(AuthContext);
+  const { isLoggedIn, logout, loading } = useContext(AuthContext);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Handle logout
   const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out successfully");
-    navigate("/login");
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+      navigate("/login");
+    } catch (error) {
+      toast.error("Logout failed");
+    }
   };
 
-  // Utility function to check if a link is active
-  const isActiveLink = (path) => {
-    return location.pathname === path;
-  };
+  const isActiveLink = (path) => location.pathname === path;
 
-  // Close the menu when clicking outside
   useEffect(() => {
     const closeMenu = (event) => {
-      if (
-        isMenuOpen &&
-        !event.target.closest(".mobile-menu-button, .mobile-menu")
-      ) {
+      if (isMenuOpen && !event.target.closest(".mobile-menu-button, .mobile-menu")) {
         setIsMenuOpen(false);
       }
     };
     document.addEventListener("click", closeMenu);
-    return () => {
-      document.removeEventListener("click", closeMenu);
-    };
+    return () => document.removeEventListener("click", closeMenu);
   }, [isMenuOpen]);
+
+  const NavigationLinks = ({ isMobile = false }) => {
+    const linkClass = `hover:text-white transition duration-300`;
+    const activeLinkClass = "text-blue-500 hover:text-blue-600";
+    const inactiveLinkClass = "text-gray-300";
+
+    return (
+      <>
+        <li>
+          <Link
+            to="/"
+            className={`${linkClass} ${isActiveLink("/") ? activeLinkClass : inactiveLinkClass}`}
+            onClick={() => isMobile && setIsMenuOpen(false)}
+          >
+            Home
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/about"
+            className={`${linkClass} ${isActiveLink("/about") ? activeLinkClass : inactiveLinkClass}`}
+            onClick={() => isMobile && setIsMenuOpen(false)}
+          >
+            About
+          </Link>
+        </li>
+        {!loading && (
+          <>
+            {isLoggedIn ? (
+              <li>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    isMobile && setIsMenuOpen(false);
+                  }}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition duration-300"
+                >
+                  Logout
+                </button>
+              </li>
+            ) : (
+              <>
+                <li>
+                  <Link
+                    to="/login"
+                    className={`${linkClass} ${isActiveLink("/login") ? activeLinkClass : inactiveLinkClass}`}
+                    onClick={() => isMobile && setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/signup"
+                    className={`${linkClass} ${isActiveLink("/signup") ? activeLinkClass : inactiveLinkClass}`}
+                    onClick={() => isMobile && setIsMenuOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </li>
+              </>
+            )}
+          </>
+        )}
+      </>
+    );
+  };
 
   return (
     <header className="bg-gray-800 text-white shadow-lg left-0 w-full z-50 sticky top-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-4">
-        {/* Logo */}
         <motion.h1
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -53,7 +113,6 @@ const Header = () => {
           </Link>
         </motion.h1>
 
-        {/* Navigation */}
         <nav className="hidden md:flex items-stretch">
           <motion.ul
             initial={{ opacity: 0, y: -10 }}
@@ -61,65 +120,10 @@ const Header = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="flex items-center gap-16"
           >
-            <li>
-              <Link
-                to="/"
-                className={`hover:text-white transition duration-300 ${
-                  isActiveLink("/") ? "text-blue-500 hover:text-blue-600" : "text-gray-300"
-                }`}
-              >
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/about"
-                className={`hover:text-white transition duration-300 ${
-                  isActiveLink("/about") ? "text-blue-500 hover:text-blue-600" : "text-gray-300"
-                }`}
-              >
-                About
-              </Link>
-            </li>
-            {isLoggedIn ? (
-              <li>
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-600 text-white p-2 py-[0.6vh] rounded-md hover:bg-red-700 transition duration-300"
-                >
-                  Logout
-                </button>
-              </li>
-            ) : (
-              <>
-                <li>
-                  <Link
-                    to="/login"
-                    className={`hover:text-white transition duration-300 ${
-                      isActiveLink("/login") ? "text-blue-500 hover:text-blue-600" : "text-gray-300"
-                    }`}
-                  >
-                    Login
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/signup"
-                    className={`hover:text-white transition duration-300 ${
-                      isActiveLink("/signup")
-                        ? "text-blue-500 hover:text-blue-600"
-                        : "text-gray-300"
-                    }`}
-                  >
-                    Register
-                  </Link>
-                </li>
-              </>
-            )}
+            <NavigationLinks />
           </motion.ul>
         </nav>
 
-        {/* Mobile Menu Button */}
         <div className="md:hidden">
           <button
             className="text-gray-300 hover:text-white focus:outline-none mobile-menu-button"
@@ -138,7 +142,7 @@ const Header = () => {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M6 18L18 6M6 6l12 12"
-                ></path>
+                />
               </svg>
             ) : (
               <svg
@@ -153,13 +157,12 @@ const Header = () => {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M4 6h16M4 12h16M4 18h16"
-                ></path>
+                />
               </svg>
             )}
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -168,70 +171,7 @@ const Header = () => {
             className="md:hidden absolute top-full left-0 w-full bg-gray-900 shadow-md z-10 mobile-menu"
           >
             <ul className="flex flex-col items-center space-y-4 py-4">
-              <li>
-                <Link
-                  to="/"
-                  className={`hover:text-white transition duration-300 ${
-                    isActiveLink("/") ? "text-blue-500 hover:text-blue-600" : "text-gray-300"
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/about"
-                  className={`hover:text-white transition duration-300 ${
-                    isActiveLink("/about") ? "text-blue-500 hover:text-blue-600" : "text-gray-300"
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  About
-                </Link>
-              </li>
-              {isLoggedIn ? (
-                <li>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="bg-red-600 text-white p-2 py-[0.6vh] rounded-md hover:bg-red-700 transition duration-300"
-                  >
-                    Logout
-                  </button>
-                </li>
-              ) : (
-                <>
-                  <li>
-                    <Link
-                      to="/login"
-                      className={`hover:text-white transition duration-300 ${
-                        isActiveLink("/login")
-                          ? "text-blue-500 hover:text-blue-600"
-                          : "text-gray-300"
-                      }`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/signup"
-                      className={`hover:text-white transition duration-300 ${
-                        isActiveLink("/signup")
-                          ? "text-blue-500 hover:text-blue-600"
-                          : "text-gray-300"
-                      }`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Register
-                    </Link>
-                  </li>
-                </>
-              )}
+              <NavigationLinks isMobile={true} />
             </ul>
           </motion.div>
         )}
