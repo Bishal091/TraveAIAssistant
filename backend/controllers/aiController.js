@@ -18,7 +18,7 @@ exports.chat = async (req, res) => {
       throw new Error('Missing required environment variables');
     }
 
-    const systemPrompt = `You are a travel agent. Provide responses in HTML format with Tailwind CSS classes. Focus on creating visually appealing, structured content with proper spacing, colors, and responsive design. Include relevant travel information, tips, and recommendations.`;
+    const systemPrompt = `You are a travel agent. Provide responses in HTML format with visually appealing, structured content and Tailwind CSS classes.`;
 
     const completion = await openai.chat.completions.create({
       model: "mistralai/Mistral-7B-Instruct-v0.2",
