@@ -20,10 +20,8 @@ const Home = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading) {
       fetchCountries();
-    }
-  }, [loading]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
