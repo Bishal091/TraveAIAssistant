@@ -156,30 +156,39 @@ const Home = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+      
     if (!isLoggedIn) {
       navigate("/login");
       toast.error("Please log in to use the chat feature.");
       return;
     }
   
+    if (!userPrompt.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+  
     setIsSubmittingChat(true);
     try {
-    const response = await axios.post(
-  `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
-  { userPrompt },
-  { 
-    withCredentials: true,
-    timeout: 15000,
-    retry: 2,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-);
-      setAiResponse(response.data.response);
+      const response = await axios({
+        method: 'POST',
+        url: `${import.meta.env.VITE_API_BASE_URL}/api/ai/chat`,
+        data: { userPrompt },
+        withCredentials: true,
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (response.data && response.data.response) {
+        setAiResponse(response.data.response);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
-      toast.error('Maximum 1 Prompt can be sent in a Day.');
+      const errorMessage = error.response?.data?.message || 'Failed to get response. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsSubmittingChat(false);
     }
