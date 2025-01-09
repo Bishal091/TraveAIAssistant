@@ -10,15 +10,16 @@ const Header = () => {
   const { isLoggedIn, logout, loading } = useContext(AuthContext);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast.success("Logged out successfully");
-      navigate("/login");
-    } catch (error) {
-      toast.error("Logout failed");
-    }
-  };
+const handleLogout = async () => {
+  try {
+    setIsMenuOpen(false); 
+    await logout();
+    toast.success("Logged out successfully");
+  } catch (error) {
+    console.error(error);
+    toast.error(error.response?.data?.message || "Logout failed");
+  }
+};
 
   const isActiveLink = (path) => location.pathname === path;
 

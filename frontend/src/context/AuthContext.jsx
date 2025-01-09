@@ -33,15 +33,24 @@ export const AuthProvider = ({ children }) => {
     }
   
 
-  const logout = async () => {
-    try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true });
-      setIsLoggedIn(false);
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+    const logout = async () => {
+      try {
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {}, { 
+          withCredentials: true,
+          headers: {
+            'Cache-Control': 'no-cache'  // Add cache control
+          }
+        });
+        setIsLoggedIn(false);
+        // Clear any local storage/state before navigation
+        localStorage.clear(); 
+        sessionStorage.clear();
+        navigate("/login", { replace: true }); // Use replace to prevent back navigation
+      } catch (error) {
+        console.error("Logout failed:", error);
+        throw error; // Re-throw to handle in component
+      }
+    };
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, logout,loading,setIsLoggedIn }}>

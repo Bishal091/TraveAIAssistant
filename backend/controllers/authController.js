@@ -146,6 +146,8 @@ exports.logout = async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
+    domain: '.onrender.com', 
+    path: '/' 
   });
   res.status(200).json({ message: "Logged out successfully" });
 };
