@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       // Clear all storage
       localStorage.clear();
       sessionStorage.clear();
+      cookies.remove("token");
       
       // Update state
       setIsLoggedIn(false);
