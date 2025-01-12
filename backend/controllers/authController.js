@@ -142,15 +142,22 @@ exports.login = async (req, res) => {
 
 // Logout
 exports.logout = async (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    domain: '.onrender.com', 
-    path: '/' 
-  });
-  res.status(200).json({ message: "Logged out successfully" });
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.NODE_ENV === "production" ? ".onrender.com" : undefined,
+      path: "/"
+    });
+    
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Logout failed" });
+  }
 };
+
 
 // Google Sign-In
 exports.googleSignin = async (req, res) => {

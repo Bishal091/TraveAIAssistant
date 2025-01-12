@@ -13,10 +13,13 @@ app.use(cookieParser()); // Use cookie-parser middleware
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: 'https://traveai.onrender.com',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'] 
+  origin: process.env.NODE_ENV === "production" 
+  ? "https://traveai.onrender.com"
+  : "http://localhost:5173",
+credentials: true,
+methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+allowedHeaders: ["Content-Type", "Authorization", "Cache-Control"],
+exposedHeaders: ["set-cookie"]
 }));
 
 app.use(express.json());
