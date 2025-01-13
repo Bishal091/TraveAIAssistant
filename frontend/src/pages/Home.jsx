@@ -64,25 +64,17 @@ const Home = () => {
   
     while (retryCount < maxRetries) {
       try {
-        // Add timeout to the request
         const response = await axios({
           method: 'get',
           url: 'https://restcountries.com/v3.1/all',
           headers: {
             'Accept': 'application/json',
-            // Explicitly request HTTP/1.1 to avoid HTTP/2 issues
-            'Connection': 'keep-alive'
           },
-          // Force axios to use HTTP/1.1
-          httpVersion: '1.1',
-          // Set a reasonable timeout
-          timeout: 10000,
-          // Disable automatic retries to handle them manually
-          maxRetries: 0
+          timeout: 10000, // Set a reasonable timeout
         });
-        
+  
         if (!response.data) throw new Error('No data received');
-        
+  
         const topCountries = response.data
           .sort(() => Math.random() - 0.5)
           .slice(0, 10);
@@ -100,7 +92,6 @@ const Home = () => {
               };
             } catch (error) {
               console.warn(`Failed to fetch weather for ${country.name.common}:`, error);
-              // Return country with default weather data instead of null
               return {
                 ...country,
                 weather: {
@@ -116,21 +107,20 @@ const Home = () => {
         );
   
         const validCountries = countriesWithDetails.filter(country => country !== null);
-        
+  
         if (validCountries.length === 0) {
           throw new Error('No valid countries data received');
         }
-        
+  
         setCountries(validCountries);
         break; // Success - exit the retry loop
   
       } catch (error) {
         retryCount++;
         console.error(`Countries fetch attempt ${retryCount} failed:`, error);
-        
+  
         if (retryCount === maxRetries) {
           toast.error("Unable to load countries. Please try again later.");
-          // Set some default data so the UI isn't empty
           setCountries([
             {
               name: { common: "Sample Country" },
@@ -146,7 +136,6 @@ const Home = () => {
             }
           ]);
         } else {
-          // Wait before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
         }
       } finally {
