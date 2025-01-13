@@ -1,8 +1,6 @@
 import { useContext, useState, useEffect, useRef } from "react";
 import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes } from "react-icons/fa";
 import axios from "axios";
-import http from 'http';
-import https from 'https';
 import toast from "react-hot-toast";
 import ChatBox from "../components/ChatBox";
 import Loader from "../components/Loader";
@@ -20,8 +18,20 @@ const Home = () => {
   const { isLoggedIn, loading } = useContext(AuthContext);
   const modalRef = useRef(null);
   const navigate = useNavigate();
-  const httpAgent = new http.Agent({ keepAlive: true });
-const httpsAgent = new https.Agent({ keepAlive: true });
+
+  useEffect(() => {
+      fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        closeModal();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchWeather = async (capital) => {
     try {
@@ -32,21 +42,14 @@ const httpsAgent = new https.Agent({ keepAlive: true });
           q: capital,
           appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
           units: 'metric'
-        },
-        timeout: 5000 // 5 second timeout
+        }
       });
-
-      if (!response.data || !response.data.main || !response.data.weather?.[0]) {
-        throw new Error('Invalid weather data format');
-      }
-
       return {
         temperature: response.data.main.temp,
         description: response.data.weather[0].description,
         icon: response.data.weather[0].icon,
       };
     } catch (error) {
-      console.warn(`Weather fetch failed for ${capital}:`, error);
       return {
         temperature: "N/A",
         description: "Weather data unavailable",
@@ -58,72 +61,35 @@ const httpsAgent = new https.Agent({ keepAlive: true });
   const fetchCountries = async () => {
     setIsFetchingCountries(true);
     try {
-      // First try with axios default config
-      let response = await axios({
+      const response = await axios({
         method: 'get',
         url: 'https://restcountries.com/v3.1/all',
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        httpAgent,
-        httpsAgent,
-        timeout: 10000, // 10 second timeout
+          'Accept': 'application/json'
+        }
       });
-      // If the response is not valid, try with cors-anywhere as fallback
-      if (!response.data || !Array.isArray(response.data)) {
-        const corsAnywhereUrl = 'https://cors-anywhere.herokuapp.com/https://restcountries.com/v3.1/all';
-        response = await axios.get(corsAnywhereUrl, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        });
-      }
-
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error('Invalid API response format');
-      }
-
-      // Filter valid countries first
-      const validCountries = response.data.filter(country => 
-        country?.name?.common &&
-        country?.capital?.[0] &&
-        country?.region &&
-        country?.population &&
-        country?.flags?.png
-      );
-
-      // Randomly select 10 countries
-      const topCountries = validCountries
+      
+      if (!response.data) throw new Error('No data received');
+      
+      const topCountries = response.data
         .sort(() => Math.random() - 0.5)
         .slice(0, 10);
 
       const countriesWithDetails = await Promise.all(
         topCountries.map(async (country) => {
-          try {
-            const weather = await fetchWeather(country.capital[0]);
-            return {
-              ...country,
-              weather,
-              bestTimeToVisit: getBestTimeToVisit(weather),
-              travelTips: getTravelTips(country.region)
-            };
-          } catch (error) {
-            console.warn(`Failed to process country ${country.name.common}:`, error);
-            return null;
-          }
+          if (!country.capital?.[0]) return null;
+          const weather = await fetchWeather(country.capital[0]);
+          return {
+            ...country,
+            weather,
+            bestTimeToVisit: getBestTimeToVisit(weather),
+            travelTips: getTravelTips(country.region)
+          };
         })
       );
 
-      const finalCountries = countriesWithDetails.filter(Boolean);
-      
-      if (finalCountries.length === 0) {
-        throw new Error('No valid country data available');
-      }
-
-      setCountries(finalCountries);
+      const validCountries = countriesWithDetails.filter(country => country !== null);
+      setCountries(validCountries);
     } catch (error) {
       console.error('Countries fetch error:', error);
       toast.error("Failed to load countries. Please refresh the page.");
@@ -131,27 +97,6 @@ const httpsAgent = new https.Agent({ keepAlive: true });
       setIsFetchingCountries(false);
     }
   };
-  useEffect(() => {
-    let mounted = true;
-
-    const initializePage = async () => {
-      try {
-        await fetchCountries();
-      } catch (error) {
-        console.error('Initialization error:', error);
-        if (mounted) {
-          toast.error("Failed to initialize page. Please refresh.");
-        }
-      }
-    };
-
-    initializePage();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
 
   const getBestTimeToVisit = (weather) => {
     const temperature = weather.temperature;
@@ -206,6 +151,7 @@ const httpsAgent = new https.Agent({ keepAlive: true });
     }
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
       
@@ -254,21 +200,19 @@ const httpsAgent = new https.Agent({ keepAlive: true });
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* ChatBox Section */}
- 
-        <ChatBox
-          userPrompt={userPrompt}
-          setUserPrompt={setUserPrompt}
-          aiResponse={aiResponse}
-          handleSubmit={handleSubmit}
-          isSubmitting={isSubmittingChat}
-        />
-
+      <ChatBox
+        userPrompt={userPrompt}
+        setUserPrompt={setUserPrompt}
+        aiResponse={aiResponse}
+        handleSubmit={handleSubmit}
+        isSubmitting={isSubmittingChat} // Pass loading state to ChatBox
+      />
 
       {/* Top 10 Countries Section */}
       <div className="container mx-auto px-4 py-12">
         <h2 className="text-3xl font-bold text-center mb-8">Countries You can Visit</h2>
         {isFetchingCountries ? (
-          <Loader />
+          <Loader /> // Show loader while fetching countries
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {countries.map((country, index) => (
