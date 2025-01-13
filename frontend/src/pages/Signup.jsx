@@ -27,7 +27,10 @@ const Signup = () => {
 
     try {
       // Check if user already exists
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, { email, password });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`,
+        { email, password }
+      );
       toast.success(response.data.message);
 
       // Navigate to OTP verification page
@@ -41,9 +44,12 @@ const Signup = () => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signin`, {
-        idToken: credentialResponse.credential,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signin`,
+        {
+          idToken: credentialResponse.credential,
+        }
+      );
       const { token } = response.data;
 
       localStorage.setItem("token", token);
@@ -60,7 +66,8 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen fixed top-0 right-0 left-0 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex items-center justify-center px-4 py-12">
-      {isLoading && <Loader text = {'Sending OTP...'}/>} {/* Show loader when isLoading is true */}
+      {isLoading && <Loader text={"Sending OTP..."} />}{" "}
+      {/* Show loader when isLoading is true */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -74,7 +81,9 @@ const Signup = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h2 className="text-4xl font-extrabold text-gray-900">Create Account</h2>
+            <h2 className="text-4xl font-extrabold text-gray-900">
+              Create Account
+            </h2>
             <p className="mt-2 text-sm text-gray-600">Sign up to get started</p>
           </motion.div>
 
@@ -158,16 +167,23 @@ const Signup = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-center w-full mx-auto"
+            className="w-full flex justify-center items-center px-4"
           >
-          <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-  <GoogleLogin
-    onSuccess={handleGoogleSuccess}
-    onError={handleGoogleError}
-    useOneTap
-    className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105 min-w-[200px]"
-  />
-</GoogleOAuthProvider>
+            <GoogleOAuthProvider
+              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+            >
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap
+                text={"signup_with"}
+                shape="rectangular"
+                size="large"
+                width="100%"
+                locale="en"
+                theme="filled_blue"
+              />
+            </GoogleOAuthProvider>
           </motion.div>
 
           <motion.div
@@ -178,7 +194,10 @@ const Signup = () => {
           >
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
-              <Link to="/login" className="text-indigo-600 hover:text-indigo-800">
+              <Link
+                to="/login"
+                className="text-indigo-600 hover:text-indigo-800"
+              >
                 Login
               </Link>
             </p>

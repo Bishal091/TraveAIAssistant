@@ -147,21 +147,28 @@ const Login = () => {
             <div className="border-t border-gray-300 flex-grow ml-3"></div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-center"
-          >
-            <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                className="text-center w-full mx-auto"
-              />
-            </GoogleOAuthProvider>
-          </motion.div>
+           <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="w-full flex justify-center items-center px-4"
+                    >
+                      <GoogleOAuthProvider
+                        clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+                      >
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={handleGoogleError}
+                          useOneTap
+                          text={"signin_with"}
+                          shape="rectangular"
+                          size="large"
+                          width="100%"
+                          locale="en"
+                          theme="filled_blue"
+                        />
+                      </GoogleOAuthProvider>
+                    </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
