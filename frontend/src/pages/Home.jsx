@@ -19,20 +19,6 @@ const Home = () => {
   const modalRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchCountries();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (modalRef.current && !modalRef.current.contains(event.target)) {
-        closeModal();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const fetchWeather = async (capital) => {
     try {
       const response = await axios({
@@ -42,14 +28,21 @@ const Home = () => {
           q: capital,
           appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
           units: 'metric'
-        }
+        },
+        timeout: 5000 // 5 second timeout
       });
+
+      if (!response.data || !response.data.main || !response.data.weather?.[0]) {
+        throw new Error('Invalid weather data format');
+      }
+
       return {
         temperature: response.data.main.temp,
         description: response.data.weather[0].description,
         icon: response.data.weather[0].icon,
       };
     } catch (error) {
+      console.warn(`Weather fetch failed for ${capital}:`, error);
       return {
         temperature: "N/A",
         description: "Weather data unavailable",
@@ -61,35 +54,71 @@ const Home = () => {
   const fetchCountries = async () => {
     setIsFetchingCountries(true);
     try {
-      const response = await axios({
+      // First try with axios default config
+      let response = await axios({
         method: 'get',
         url: 'https://restcountries.com/v3.1/all',
         headers: {
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000, // 10 second timeout
       });
-      
-      if (!response.data) throw new Error('No data received');
-      
-      const topCountries = response.data
+
+      // If the response is not valid, try with cors-anywhere as fallback
+      if (!response.data || !Array.isArray(response.data)) {
+        const corsAnywhereUrl = 'https://cors-anywhere.herokuapp.com/https://restcountries.com/v3.1/all';
+        response = await axios.get(corsAnywhereUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        });
+      }
+
+      if (!response.data || !Array.isArray(response.data)) {
+        throw new Error('Invalid API response format');
+      }
+
+      // Filter valid countries first
+      const validCountries = response.data.filter(country => 
+        country?.name?.common &&
+        country?.capital?.[0] &&
+        country?.region &&
+        country?.population &&
+        country?.flags?.png
+      );
+
+      // Randomly select 10 countries
+      const topCountries = validCountries
         .sort(() => Math.random() - 0.5)
         .slice(0, 10);
 
       const countriesWithDetails = await Promise.all(
         topCountries.map(async (country) => {
-          if (!country.capital?.[0]) return null;
-          const weather = await fetchWeather(country.capital[0]);
-          return {
-            ...country,
-            weather,
-            bestTimeToVisit: getBestTimeToVisit(weather),
-            travelTips: getTravelTips(country.region)
-          };
+          try {
+            const weather = await fetchWeather(country.capital[0]);
+            return {
+              ...country,
+              weather,
+              bestTimeToVisit: getBestTimeToVisit(weather),
+              travelTips: getTravelTips(country.region)
+            };
+          } catch (error) {
+            console.warn(`Failed to process country ${country.name.common}:`, error);
+            return null;
+          }
         })
       );
 
-      const validCountries = countriesWithDetails.filter(country => country !== null);
-      setCountries(validCountries);
+      const finalCountries = countriesWithDetails.filter(Boolean);
+      
+      if (finalCountries.length === 0) {
+        throw new Error('No valid country data available');
+      }
+
+      setCountries(finalCountries);
     } catch (error) {
       console.error('Countries fetch error:', error);
       toast.error("Failed to load countries. Please refresh the page.");
@@ -97,6 +126,27 @@ const Home = () => {
       setIsFetchingCountries(false);
     }
   };
+  useEffect(() => {
+    let mounted = true;
+
+    const initializePage = async () => {
+      try {
+        await fetchCountries();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        if (mounted) {
+          toast.error("Failed to initialize page. Please refresh.");
+        }
+      }
+    };
+
+    initializePage();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
 
   const getBestTimeToVisit = (weather) => {
     const temperature = weather.temperature;
