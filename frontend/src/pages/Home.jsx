@@ -1,180 +1,28 @@
 import { useContext, useState, useEffect, useRef } from "react";
-import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes } from "react-icons/fa";
+import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes, FaSync } from "react-icons/fa";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ChatBox from "../components/ChatBox";
 import Loader from "../components/Loader";
 import { AuthContext } from "../context/AuthContext";
+import { useCountries } from "../context/CountriesContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const [userPrompt, setUserPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
-  const [countries, setCountries] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
-  const [isFetchingCountries, setIsFetchingCountries] = useState(true);
   const [isSubmittingChat, setIsSubmittingChat] = useState(false);
-  const [error, setError] = useState(null);
   const { isLoggedIn, loading } = useContext(AuthContext);
+  const { countries, isFetchingCountries, fetchCountries, refreshCountries } = useCountries();
   const modalRef = useRef(null);
   const navigate = useNavigate();
 
-  const fetchWeather = async (capital) => {
-    try {
-      const response = await axios({
-        method: 'get',
-        url: 'https://api.openweathermap.org/data/2.5/weather',
-        params: {
-          q: capital,
-          appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
-          units: 'metric'
-        },
-        cache: false // Disable caching for weather requests
-      });
-      
-      return {
-        temperature: response.data.main.temp,
-        description: response.data.weather[0].description,
-        icon: response.data.weather[0].icon,
-      };
-    } catch (error) {
-      console.warn(`Weather fetch failed for ${capital}:`, error);
-      return {
-        temperature: "N/A",
-        description: "Weather data unavailable",
-        icon: "01d",
-      };
-    }
-  };
-
-  const fetchCountries = async () => {
-    setIsFetchingCountries(true);
-    setError(null);
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-      try {
-        // Clear cache before fetching
-        const response = await axios({
-          method: 'get',
-          url: 'https://restcountries.com/v3.1/all',
-          headers: {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          timeout: 15000,
-        });
-
-        if (!response.data || !Array.isArray(response.data)) {
-          throw new Error('Invalid response format');
-        }
-
-        // Randomly select 10 countries that have capitals
-        const validCountries = response.data.filter(country => 
-          country.capital?.[0] && 
-          country.name?.common &&
-          country.region
-        );
-
-        if (validCountries.length === 0) {
-          throw new Error('No valid countries found in response');
-        }
-
-        const randomCountries = validCountries
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 10);
-
-        // Fetch weather data for all selected countries
-        const countriesWithDetails = await Promise.all(
-          randomCountries.map(async (country) => {
-            const weather = await fetchWeather(country.capital[0]);
-            return {
-              ...country,
-              weather,
-              bestTimeToVisit: getBestTimeToVisit(weather),
-              travelTips: getTravelTips(country.region)
-            };
-          })
-        );
-
-        setCountries(countriesWithDetails);
-        setIsFetchingCountries(false);
-        break; // Success - exit retry loop
-
-      } catch (error) {
-        console.error(`Fetch attempt ${retryCount + 1} failed:`, error);
-        retryCount++;
-
-        if (retryCount === maxRetries) {
-          setError('Failed to load countries. Please refresh the page.');
-          toast.error("Unable to load countries. Please try again later.");
-          setIsFetchingCountries(false);
-        } else {
-          // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-        }
-      }
-    }
-  };
   useEffect(() => {
-    fetchCountries();
-  }, []);
+    fetchCountries(); // Will only fetch if cache is expired or empty
+  }, [fetchCountries]);
 
-  const getBestTimeToVisit = (weather) => {
-    const temperature = weather.temperature;
-    if (temperature >= 15 && temperature <= 25) {
-      return "Spring (March to May) or Autumn (September to November)";
-    } else if (temperature > 25) {
-      return "Winter (December to February)";
-    }
-    return "Summer (June to August)";
-  };
-
-  const getTravelTips = (region) => {
-    switch (region) {
-      case "Europe":
-        return "Explore historical landmarks, enjoy local cuisine, and visit museums.";
-      case "Asia":
-        return "Visit ancient temples, try street food, and explore bustling markets.";
-      case "Africa":
-        return "Go on a safari, explore national parks, and experience local cultures.";
-      case "Americas":
-        return "Visit natural wonders, enjoy outdoor activities, and explore vibrant cities.";
-      case "Oceania":
-        return "Relax on beautiful beaches, explore coral reefs, and enjoy outdoor adventures.";
-      case "North America":
-        return "Experience diverse landscapes, visit world-class cities, and enjoy outdoor adventures.";
-      case "South America":
-        return "Explore the Amazon rainforest, visit iconic landmarks, and enjoy lively festivals.";
-      case "Central America":
-        return "Discover ancient ruins, enjoy tropical rainforests, and experience rich cultural heritage.";
-      case "Caribbean":
-        return "Relax on stunning beaches, enjoy vibrant festivals, and explore crystal-clear waters.";
-      case "Middle East":
-        return "Explore ancient history, enjoy vibrant bazaars, and experience rich cultural traditions.";
-      case "Southeast Asia":
-        return "Visit stunning islands, enjoy delicious street food, and explore lush jungles.";
-      case "Central Asia":
-        return "Discover Silk Road history, experience nomadic cultures, and explore stunning landscapes.";
-      case "Eastern Europe":
-        return "Explore medieval castles, enjoy hearty cuisine, and experience rich cultural traditions.";
-      case "Western Europe":
-        return "Visit iconic landmarks, enjoy gourmet food, and explore charming cities.";
-      case "Northern Europe":
-        return "Experience the Northern Lights, explore fjords, and enjoy cozy Scandinavian culture.";
-      case "Southern Europe":
-        return "Relax on Mediterranean beaches, enjoy delicious cuisine, and explore ancient ruins.";
-      case "Antarctica":
-        return "Experience the pristine wilderness, observe unique wildlife, and marvel at icy landscapes.";
-      case "Polar":
-        return "Witness the breathtaking auroras, explore icy terrains, and enjoy extreme adventures.";
-      default:
-        return "Explore local culture, try traditional cuisine, and visit historical landmarks.";
-    }
-  };
 
 
   const handleSubmit = async (e) => {
@@ -222,22 +70,36 @@ const Home = () => {
 
   if (loading) return <Loader />;
 
-  return (
+
+   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      {/* ChatBox Section */}
       <ChatBox
         userPrompt={userPrompt}
         setUserPrompt={setUserPrompt}
         aiResponse={aiResponse}
         handleSubmit={handleSubmit}
-        isSubmitting={isSubmittingChat} // Pass loading state to ChatBox
+        isSubmitting={isSubmittingChat}
       />
 
-      {/* Top 10 Countries Section */}
       <div className="container mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-center mb-8">Countries You can Visit</h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold">Countries You Can Visit</h2>
+          <button
+            onClick={refreshCountries}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            disabled={isFetchingCountries}
+          >
+            <FaSync className={isFetchingCountries ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+
         {isFetchingCountries ? (
-          <Loader /> // Show loader while fetching countries
+          <div className="flex justify-center items-center min-h-[200px]">
+            <Loader />
+          </div>
+        ) : countries.length === 0 ? (
+          <div className="text-center text-gray-500">No countries available</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {countries.map((country, index) => (
@@ -282,8 +144,6 @@ const Home = () => {
           </div>
         )}
       </div>
-
-      {/* Modal for Learn More */}
       <AnimatePresence>
         {selectedCountry && (
           <motion.div
@@ -350,3 +210,4 @@ const Home = () => {
 };
 
 export default Home;
+
