@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post(
+      const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`,
         {},
         {
@@ -46,22 +46,22 @@ export const AuthProvider = ({ children }) => {
           }
         }
       );
-      
-      // Clear all storage
-      localStorage.clear();
-      sessionStorage.clear();
-      cookies.remove("token");
-      
-      // Update state
-      setIsLoggedIn(false);
-      
-      // Force a re-check of authentication
-      await checkAuth();
-      
-      // Navigate to login
-      navigate("/login", { replace: true });
+
+      if (response.status === 200) {
+        // Clear any local storage items
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Update state
+        setIsLoggedIn(false);
+        
+        // Navigate to login
+        navigate("/login", { replace: true });
+      } else {
+        throw new Error("Logout failed");
+      }
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Logout error:", error);
       throw error;
     }
   };
