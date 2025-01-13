@@ -160,30 +160,71 @@ exports.logout = async (req, res) => {
 // Google Sign-In
 exports.googleSignin = async (req, res) => {
   const { idToken } = req.body;
-
   try {
     const ticket = await client.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-
     const { email, name } = ticket.getPayload();
-
-    let user = await User.findOne({ email });
+    
+    const user = await User.findOne({ email });
     if (!user) {
-      user = new User({ email, name, isVerified: true });
-      await user.save();
+      return res.status(404).json({ 
+        message: "User not found. Please sign up first.",
+        userExists: false 
+      });
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "24h" });
-
-    // Set token in cookie
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "104h" });
     setTokenCookie(res, token);
-
-    res.status(200).json({ message: "Google login successful" });
+    
+    res.status(200).json({ 
+      message: "Sign in successful",
+      userExists: true,
+      token
+    });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong. Please try again." });
+    console.error("Google signin error:", error);
+    res.status(500).json({ message: "Authentication failed. Please try again." });
+  }
+};
+
+exports.googleSignup = async (req, res) => {
+  const { idToken } = req.body;
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { email, name } = ticket.getPayload();
+    
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ 
+        message: "User already exists. Please sign in instead.",
+        userExists: true 
+      });
+    }
+
+    // Create new user
+    user = new User({
+      email,
+      name,
+      isVerified: true,
+    });
+    await user.save();
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "104h" });
+    setTokenCookie(res, token);
+    
+    res.status(201).json({ 
+      message: "Account created successfully",
+      userExists: false,
+      token
+    });
+  } catch (error) {
+    console.error("Google signup error:", error);
+    res.status(500).json({ message: "Registration failed. Please try again." });
   }
 };
 

@@ -45,23 +45,25 @@ const Signup = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signin`,
-        {
-          idToken: credentialResponse.credential,
-        }
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/google-signup`,
+        { idToken: credentialResponse.credential },
+        { withCredentials: true }
       );
-      const { token } = response.data;
-
-      localStorage.setItem("token", token);
-      toast.success("Google login successful!");
-      navigate("/");
+      
+      if (!response.data.userExists) {
+        localStorage.setItem("token", response.data.token);
+        toast.success("Account created successfully!");
+        setIsLoggedIn(true);
+        navigate("/");
+      }
     } catch (error) {
-      toast.error("Google login failed: " + error.message);
+      if (error.response?.status === 400) {
+        toast.error("Account already exists. Please sign in instead.");
+        navigate("/signin");
+      } else {
+        toast.error("Sign up failed: " + (error.response?.data?.message || error.message));
+      }
     }
-  };
-
-  const handleGoogleError = () => {
-    toast.error("Google login failed");
   };
 
   return (
@@ -169,21 +171,19 @@ const Signup = () => {
             transition={{ delay: 0.5 }}
             className="w-full flex justify-center items-center px-4"
           >
-            <GoogleOAuthProvider
-              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
-            >
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-                text={"signup_with"}
-                shape="rectangular"
-                size="large"
-                width="100%"
-                locale="en"
-                theme="filled_blue"
-              />
-            </GoogleOAuthProvider>
+           <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => toast.error("Google sign up failed")}
+          useOneTap
+          text="signup_with"
+          shape="rectangular"
+          size="large"
+          width="100%"
+          locale="en"
+          theme="filled_blue"
+        />
+      </GoogleOAuthProvider>
           </motion.div>
 
           <motion.div
