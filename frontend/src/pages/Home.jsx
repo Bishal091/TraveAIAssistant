@@ -1,6 +1,8 @@
 import { useContext, useState, useEffect, useRef } from "react";
 import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes } from "react-icons/fa";
 import axios from "axios";
+const http = require('http');
+const https = require('https');
 import toast from "react-hot-toast";
 import ChatBox from "../components/ChatBox";
 import Loader from "../components/Loader";
@@ -18,6 +20,8 @@ const Home = () => {
   const { isLoggedIn, loading } = useContext(AuthContext);
   const modalRef = useRef(null);
   const navigate = useNavigate();
+  const httpAgent = new http.Agent({ keepAlive: true });
+const httpsAgent = new https.Agent({ keepAlive: true });
 
   const fetchWeather = async (capital) => {
     try {
@@ -62,9 +66,10 @@ const Home = () => {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
+        httpAgent,
+        httpsAgent,
         timeout: 10000, // 10 second timeout
       });
-
       // If the response is not valid, try with cors-anywhere as fallback
       if (!response.data || !Array.isArray(response.data)) {
         const corsAnywhereUrl = 'https://cors-anywhere.herokuapp.com/https://restcountries.com/v3.1/all';
