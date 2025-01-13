@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import axios from "axios";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import Loader from "../components/Loader";
+import { AuthContext } from "../context/AuthContext";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -13,6 +14,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // State for loader
   const navigate = useNavigate();
+   const { setIsLoggedIn } = useContext(AuthContext); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
