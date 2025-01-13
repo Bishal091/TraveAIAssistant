@@ -13,25 +13,12 @@ const Home = () => {
   const [aiResponse, setAiResponse] = useState("");
   const [countries, setCountries] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
-  const [isFetchingCountries, setIsFetchingCountries] = useState(false);
+  const [isFetchingCountries, setIsFetchingCountries] = useState(true);
   const [isSubmittingChat, setIsSubmittingChat] = useState(false);
+  const [error, setError] = useState(null);
   const { isLoggedIn, loading } = useContext(AuthContext);
   const modalRef = useRef(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-      fetchCountries();
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (modalRef.current && !modalRef.current.contains(event.target)) {
-        closeModal();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const fetchWeather = async (capital) => {
     try {
@@ -42,14 +29,17 @@ const Home = () => {
           q: capital,
           appid: import.meta.env.VITE_OPENWEATHER_API_KEY,
           units: 'metric'
-        }
+        },
+        cache: false // Disable caching for weather requests
       });
+      
       return {
         temperature: response.data.main.temp,
         description: response.data.weather[0].description,
         icon: response.data.weather[0].icon,
       };
     } catch (error) {
+      console.warn(`Weather fetch failed for ${capital}:`, error);
       return {
         temperature: "N/A",
         description: "Weather data unavailable",
@@ -57,94 +47,81 @@ const Home = () => {
       };
     }
   };
+
   const fetchCountries = async () => {
     setIsFetchingCountries(true);
+    setError(null);
     let retryCount = 0;
     const maxRetries = 3;
-  
+
     while (retryCount < maxRetries) {
       try {
+        // Clear cache before fetching
         const response = await axios({
           method: 'get',
           url: 'https://restcountries.com/v3.1/all',
           headers: {
             'Accept': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           },
-          timeout: 10000, // Set a reasonable timeout
+          timeout: 15000,
         });
-  
-        if (!response.data) throw new Error('No data received');
-  
-        const topCountries = response.data
+
+        if (!response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format');
+        }
+
+        // Randomly select 10 countries that have capitals
+        const validCountries = response.data.filter(country => 
+          country.capital?.[0] && 
+          country.name?.common &&
+          country.region
+        );
+
+        if (validCountries.length === 0) {
+          throw new Error('No valid countries found in response');
+        }
+
+        const randomCountries = validCountries
           .sort(() => Math.random() - 0.5)
           .slice(0, 10);
-  
+
+        // Fetch weather data for all selected countries
         const countriesWithDetails = await Promise.all(
-          topCountries.map(async (country) => {
-            if (!country.capital?.[0]) return null;
-            try {
-              const weather = await fetchWeather(country.capital[0]);
-              return {
-                ...country,
-                weather,
-                bestTimeToVisit: getBestTimeToVisit(weather),
-                travelTips: getTravelTips(country.region)
-              };
-            } catch (error) {
-              console.warn(`Failed to fetch weather for ${country.name.common}:`, error);
-              return {
-                ...country,
-                weather: {
-                  temperature: "N/A",
-                  description: "Weather data unavailable",
-                  icon: "01d",
-                },
-                bestTimeToVisit: "Year-round",
-                travelTips: getTravelTips(country.region)
-              };
-            }
+          randomCountries.map(async (country) => {
+            const weather = await fetchWeather(country.capital[0]);
+            return {
+              ...country,
+              weather,
+              bestTimeToVisit: getBestTimeToVisit(weather),
+              travelTips: getTravelTips(country.region)
+            };
           })
         );
-  
-        const validCountries = countriesWithDetails.filter(country => country !== null);
-  
-        if (validCountries.length === 0) {
-          throw new Error('No valid countries data received');
-        }
-  
-        setCountries(validCountries);
-        break; // Success - exit the retry loop
-  
+
+        setCountries(countriesWithDetails);
+        setIsFetchingCountries(false);
+        break; // Success - exit retry loop
+
       } catch (error) {
+        console.error(`Fetch attempt ${retryCount + 1} failed:`, error);
         retryCount++;
-        console.error(`Countries fetch attempt ${retryCount} failed:`, error);
-  
+
         if (retryCount === maxRetries) {
+          setError('Failed to load countries. Please refresh the page.');
           toast.error("Unable to load countries. Please try again later.");
-          setCountries([
-            {
-              name: { common: "Sample Country" },
-              capital: ["Sample City"],
-              weather: {
-                temperature: "N/A",
-                description: "Weather data unavailable",
-                icon: "01d",
-              },
-              bestTimeToVisit: "Year-round",
-              travelTips: "Please refresh to see real travel tips.",
-              region: "Sample Region"
-            }
-          ]);
-        } else {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-        }
-      } finally {
-        if (retryCount === maxRetries) {
           setIsFetchingCountries(false);
+        } else {
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
         }
       }
     }
   };
+  useEffect(() => {
+    fetchCountries();
+  }, []);
 
   const getBestTimeToVisit = (weather) => {
     const temperature = weather.temperature;
