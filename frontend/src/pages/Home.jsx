@@ -1,8 +1,8 @@
 import { useContext, useState, useEffect, useRef } from "react";
 import { FaFlag, FaCloudSun, FaCalendarAlt, FaMapMarkerAlt, FaInfoCircle, FaTimes } from "react-icons/fa";
 import axios from "axios";
-const http = require('http');
-const https = require('https');
+import http from 'http';
+import https from 'https';
 import toast from "react-hot-toast";
 import ChatBox from "../components/ChatBox";
 import Loader from "../components/Loader";
