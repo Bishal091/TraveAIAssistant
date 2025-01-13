@@ -57,44 +57,103 @@ const Home = () => {
       };
     }
   };
-
   const fetchCountries = async () => {
     setIsFetchingCountries(true);
-    try {
-      const response = await axios({
-        method: 'get',
-        url: 'https://restcountries.com/v3.1/all',
-        headers: {
-          'Accept': 'application/json'
+    let retryCount = 0;
+    const maxRetries = 3;
+  
+    while (retryCount < maxRetries) {
+      try {
+        // Add timeout to the request
+        const response = await axios({
+          method: 'get',
+          url: 'https://restcountries.com/v3.1/all',
+          headers: {
+            'Accept': 'application/json',
+            // Explicitly request HTTP/1.1 to avoid HTTP/2 issues
+            'Connection': 'keep-alive'
+          },
+          // Force axios to use HTTP/1.1
+          httpVersion: '1.1',
+          // Set a reasonable timeout
+          timeout: 10000,
+          // Disable automatic retries to handle them manually
+          maxRetries: 0
+        });
+        
+        if (!response.data) throw new Error('No data received');
+        
+        const topCountries = response.data
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 10);
+  
+        const countriesWithDetails = await Promise.all(
+          topCountries.map(async (country) => {
+            if (!country.capital?.[0]) return null;
+            try {
+              const weather = await fetchWeather(country.capital[0]);
+              return {
+                ...country,
+                weather,
+                bestTimeToVisit: getBestTimeToVisit(weather),
+                travelTips: getTravelTips(country.region)
+              };
+            } catch (error) {
+              console.warn(`Failed to fetch weather for ${country.name.common}:`, error);
+              // Return country with default weather data instead of null
+              return {
+                ...country,
+                weather: {
+                  temperature: "N/A",
+                  description: "Weather data unavailable",
+                  icon: "01d",
+                },
+                bestTimeToVisit: "Year-round",
+                travelTips: getTravelTips(country.region)
+              };
+            }
+          })
+        );
+  
+        const validCountries = countriesWithDetails.filter(country => country !== null);
+        
+        if (validCountries.length === 0) {
+          throw new Error('No valid countries data received');
         }
-      });
-      
-      if (!response.data) throw new Error('No data received');
-      
-      const topCountries = response.data
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 10);
-
-      const countriesWithDetails = await Promise.all(
-        topCountries.map(async (country) => {
-          if (!country.capital?.[0]) return null;
-          const weather = await fetchWeather(country.capital[0]);
-          return {
-            ...country,
-            weather,
-            bestTimeToVisit: getBestTimeToVisit(weather),
-            travelTips: getTravelTips(country.region)
-          };
-        })
-      );
-
-      const validCountries = countriesWithDetails.filter(country => country !== null);
-      setCountries(validCountries);
-    } catch (error) {
-      console.error('Countries fetch error:', error);
-      toast.error("Failed to load countries. Please refresh the page.");
-    } finally {
-      setIsFetchingCountries(false);
+        
+        setCountries(validCountries);
+        break; // Success - exit the retry loop
+  
+      } catch (error) {
+        retryCount++;
+        console.error(`Countries fetch attempt ${retryCount} failed:`, error);
+        
+        if (retryCount === maxRetries) {
+          toast.error("Unable to load countries. Please try again later.");
+          // Set some default data so the UI isn't empty
+          setCountries([
+            {
+              name: { common: "Sample Country" },
+              capital: ["Sample City"],
+              weather: {
+                temperature: "N/A",
+                description: "Weather data unavailable",
+                icon: "01d",
+              },
+              bestTimeToVisit: "Year-round",
+              travelTips: "Please refresh to see real travel tips.",
+              region: "Sample Region"
+            }
+          ]);
+        } else {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        }
+      } finally {
+        if (retryCount === maxRetries) {
+          setIsFetchingCountries(false);
+        }
+      }
     }
   };
 
